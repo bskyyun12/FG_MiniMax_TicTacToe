@@ -5,42 +5,46 @@
 class Game
 {
 public:
-	static Game* GetInstance();
-	static void Release();
+	Game();
+	~Game();
 	void StartGame();
+	void ReleaseGame();
 
 private:
-	static Game* Instance;
-	int Board[3][3];
-	
-	enum BoardSpot
+	//static const int BoardSize = 5;
+	//int Board[BoardSize][BoardSize];
+
+	int** Board;
+	int BoardSize = 5;
+	int EmptySlotCount = BoardSize * BoardSize;
+	int Difficulty = 7;
+
+	enum Turn
 	{
 		Empty = 0,
-		Player = 5,
-		AI = 7,
+		Player = 555,
+		AI = 777,
 	};
 
-	BoardSpot CurrentTurn;
+	Turn CurrentTurn;
 
 	bool bQuit = false;
 
 private:
-	Game();
-	~Game();
 
 	void CreateBoard();
 	void UpdateBoard();
 
 	void CleanScreen();
 
-	void StartTurn(BoardSpot Turn);
+	void StartTurn(Turn TurnToStart);
 
 	void EndTurn();
-	bool HasWon(BoardSpot Turn);
+	bool HasWon(Turn TurnToCheck);
 	bool IsDraw();
 	void EndGame();
 	bool IsGameOver();
 
-	int MiniMax(int Board[3][3], bool AITurn, int Depth);
+	int MiniMax(int** Board, bool AITurn, int Depth, int Alpha, int Beta);
 };
 

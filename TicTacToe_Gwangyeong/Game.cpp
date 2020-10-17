@@ -1,7 +1,5 @@
 #include "Game.h"
 
-Game* Game::Instance = nullptr;
-
 Game::Game()
 {
 
@@ -12,24 +10,21 @@ Game::~Game()
 
 }
 
-Game* Game::GetInstance()
+void Game::ReleaseGame()
 {
-	if (Instance == nullptr) { Instance = new Game(); }
-
-	return Instance;
-}
-
-void Game::Release()
-{
-	delete Instance;
-	Instance = nullptr;
+	// De-Allocate memory to prevent memory leak
+	for (int i = 0; i < BoardSize; ++i)
+	{
+		delete[] Board[i];
+	}
+	delete[] Board;
 }
 
 void Game::CreateBoard()
 {
-	for (int row = 0; row < 3; row++)
+	for (int row = 0; row < BoardSize; row++)
 	{
-		for (int col = 0; col < 3; col++)
+		for (int col = 0; col < BoardSize; col++)
 		{
 			Board[row][col] = Empty;
 		}
@@ -41,13 +36,24 @@ void Game::CreateBoard()
 void Game::UpdateBoard()
 {
 	CleanScreen();
-	std::cout << "     0   1   2  " << std::endl;
-
-	for (int row = 0; row < 3; row++)
+	std::cout << "     ";
+	for (int i = 0; i < BoardSize; i++)
 	{
-		std::cout << "   -------------" << std::endl;
+		std::cout << i << "   ";
+	}
+	std::cout << std::endl;
+
+	for (int row = 0; row < BoardSize; row++)
+	{
+		std::cout << "   -";
+		for (int i = 0; i < BoardSize; i++)
+		{
+			std::cout << "----";
+		}
+		std::cout << std::endl;
+
 		std::cout << " " << row << " -";
-		for (int col = 0; col < 3; col++)
+		for (int col = 0; col < BoardSize; col++)
 		{
 			if (Board[row][col] == Empty) // Empty
 			{
@@ -64,17 +70,22 @@ void Game::UpdateBoard()
 		}
 		std::cout << std::endl;
 	}
-	std::cout << "   -------------" << std::endl;
+	std::cout << "   -";
+	for (int i = 0; i < BoardSize; i++)
+	{
+		std::cout << "----";
+	}
+	std::cout << std::endl;
 }
 
 void Game::CleanScreen()
 {
-	system("cls");
+	//system("cls");
 }
 
-void Game::StartTurn(BoardSpot Turn)
+void Game::StartTurn(Turn TurnToStart)
 {
-	CurrentTurn = Turn;
+	CurrentTurn = TurnToStart;
 
 	std::cout << "\n --------------------------" << std::endl;
 	if (CurrentTurn == Player) // Player
@@ -94,9 +105,9 @@ void Game::StartTurn(BoardSpot Turn)
 				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 				std::cout << " Please Enter a Number." << std::endl;
 			}
-			else if (Row > 2 || Row < 0)
+			else if (Row > BoardSize - 1 || Row < 0)
 			{
-				std::cout << " Enter between 0 and 2." << std::endl;
+				std::cout << " Enter between 0 and " << BoardSize - 1 << "." << std::endl;
 			}
 			else
 			{
@@ -114,9 +125,9 @@ void Game::StartTurn(BoardSpot Turn)
 				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 				std::cout << " Please Enter a Number." << std::endl;
 			}
-			else if (Col > 2 || Col < 0)
+			else if (Col > BoardSize - 1 || Col < 0)
 			{
-				std::cout << " Enter between 0 and 2." << std::endl;
+				std::cout << " Enter between 0 and " << BoardSize - 1 << "." << std::endl;
 			}
 			else
 			{
@@ -134,6 +145,7 @@ void Game::StartTurn(BoardSpot Turn)
 		}
 
 		Board[Row][Col] = Player;
+		EmptySlotCount--;
 		EndTurn();
 	}
 	else // AI
@@ -144,14 +156,14 @@ void Game::StartTurn(BoardSpot Turn)
 		int BestRow;
 		int BestCol;
 
-		for (int Row = 0; Row < 3; Row++)
+		for (int Row = 0; Row < BoardSize; Row++)
 		{
-			for (int Col = 0; Col < 3; Col++)
+			for (int Col = 0; Col < BoardSize; Col++)
 			{
 				if (Board[Row][Col] == Empty) // empty spot
 				{
 					Board[Row][Col] = AI;
-					int Score = MiniMax(Board, false, 0);
+					int Score = MiniMax(Board, false, 0, -9999, 9999);
 					Board[Row][Col] = Empty;
 					std::cout << " Score: " << Score << ", (" << Row << ", " << Col << ")" << std::endl;
 
@@ -167,30 +179,39 @@ void Game::StartTurn(BoardSpot Turn)
 		}
 
 		Board[BestRow][BestCol] = AI;
-
+		EmptySlotCount--;
 		EndTurn();
 	}
 }
 
-int Game::MiniMax(int Board[3][3], bool IsMax, int Depth)
+int Game::MiniMax(int** Board, bool IsMax, int Depth, int Alpha, int Beta)
 {
-	if (HasWon(Player)) { return -1; }
-	if (HasWon(AI)) { return 1; }
+	if (Depth >= Difficulty)
+	{
+		return 0;
+	}
+	if (HasWon(Player)) { return -10 + Depth; }
+	if (HasWon(AI)) { return 10 - Depth; }
 	if (IsDraw()) { return 0; }
 
 	if (IsMax)
 	{
 		int BestScore = -1000;
-		for (int Row = 0; Row < 3; Row++)
+		for (int Row = 0; Row < BoardSize; Row++)
 		{
-			for (int Col = 0; Col < 3; Col++)
+			for (int Col = 0; Col < BoardSize; Col++)
 			{
 				if (Board[Row][Col] == Empty) // empty spot
 				{
 					Board[Row][Col] = AI;
-					int Score = MiniMax(Board, false, Depth + 1);
-					BestScore = std::max(BestScore, Score);
+					int Score = MiniMax(Board, false, Depth + 1, Alpha, Beta);
 					Board[Row][Col] = Empty;
+					BestScore = std::max(BestScore, Score);
+					Alpha = std::max(Alpha, BestScore);
+					if (Alpha >= Beta)
+					{
+						break;
+					}
 				}
 			}
 		}
@@ -199,16 +220,21 @@ int Game::MiniMax(int Board[3][3], bool IsMax, int Depth)
 	else
 	{
 		int BestScore = 1000;
-		for (int Row = 0; Row < 3; Row++)
+		for (int Row = 0; Row < BoardSize; Row++)
 		{
-			for (int Col = 0; Col < 3; Col++)
+			for (int Col = 0; Col < BoardSize; Col++)
 			{
 				if (Board[Row][Col] == Empty) // empty spot
 				{
 					Board[Row][Col] = Player;
-					int Score = MiniMax(Board, true, Depth + 1);
-					BestScore = std::min(BestScore, Score);
+					int Score = MiniMax(Board, true, Depth + 1, Alpha, Beta);
 					Board[Row][Col] = Empty;
+					BestScore = std::min(BestScore, Score);
+					Beta = std::min(Beta, BestScore);
+					if (Alpha >= Beta)
+					{
+						break;
+					}
 				}
 			}
 		}
@@ -228,35 +254,60 @@ void Game::EndTurn()
 	}
 
 	// Next turn
-	if (CurrentTurn == Player)
-	{
-		StartTurn(AI);
-	}
-	else
-	{
-		//std::cout << " Press any key to continue...";
-		//std::cin.ignore();
-		//std::cin.get();
-
-		StartTurn(Player);
-	}
+	StartTurn(CurrentTurn == Player ? AI : Player);
 }
 
-bool Game::HasWon(BoardSpot Turn)
+bool Game::HasWon(Turn TurnToCheck)
 {
-	if (
-		// Horizontal
-		Board[0][0] + Board[0][1] + Board[0][2] == Turn * 3 ||
-		Board[2][0] + Board[2][1] + Board[2][2] == Turn * 3 ||
-		Board[1][0] + Board[1][1] + Board[1][2] == Turn * 3 ||
-		// Vertical
-		Board[0][0] + Board[1][0] + Board[2][0] == Turn * 3 ||
-		Board[0][1] + Board[1][1] + Board[2][1] == Turn * 3 ||
-		Board[0][2] + Board[1][2] + Board[2][2] == Turn * 3 ||
-		// Diagonal
-		Board[0][0] + Board[1][1] + Board[2][2] == Turn * 3 ||
-		Board[2][0] + Board[1][1] + Board[0][2] == Turn * 3
-		)
+	int Sum = 0;
+	// Horizontal
+	for (int Row = 0; Row < BoardSize; Row++)
+	{
+		Sum = 0;
+		for (int Col = 0; Col < BoardSize; Col++)
+		{
+			Sum += Board[Row][Col];
+		}
+
+		if (Sum == TurnToCheck * BoardSize)
+		{
+			return true;
+		}
+	}
+
+	// Vertical
+	for (int Row = 0; Row < BoardSize; Row++)
+	{
+		Sum = 0;
+		for (int Col = 0; Col < BoardSize; Col++)
+		{
+			Sum += Board[Col][Row];
+		}
+
+		if (Sum == TurnToCheck * BoardSize)
+		{
+			return true;
+		}
+	}
+
+	// Diagonal 1
+	Sum = 0;
+	for (int i = 0; i < BoardSize; i++)
+	{		
+		Sum += Board[i][i];
+	}
+	if (Sum == TurnToCheck * BoardSize)
+	{
+		return true;
+	}
+
+	// Diagonal 2
+	Sum = 0;
+	for (int i = 0; i < BoardSize; i++)
+	{
+		Sum += Board[i][BoardSize - 1 - i];
+	}
+	if (Sum == TurnToCheck * BoardSize)
 	{
 		return true;
 	}
@@ -266,27 +317,12 @@ bool Game::HasWon(BoardSpot Turn)
 
 bool Game::IsDraw()
 {
-	for (int Row = 0; Row < 3; Row++)
-	{
-		for (int Col = 0; Col < 3; Col++)
-		{
-			if (Board[Row][Col] == Empty)
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
+	return EmptySlotCount == 0;
 }
 
 bool Game::IsGameOver()
 {
-	if (HasWon(Player)) { return true; }
-	if (HasWon(AI)) { return true; }
-	if (IsDraw()) { return true; }
-
-	return false;
+	return HasWon(Player) || HasWon(AI) || IsDraw();
 }
 
 void Game::EndGame()
@@ -333,10 +369,47 @@ void Game::EndGame()
 
 void Game::StartGame()
 {
-	// draw map
-	CreateBoard();
-
 	char Answer;
+	while (1)
+	{
+		std::cout << "\n Please Set the board's size. (3 ~ 5)" << std::endl;
+		std::cin >> Answer;
+		int AnswerInt = (int)Answer - 48;
+		if (AnswerInt > 5 || AnswerInt < 3)
+		{
+			std::cout << " Please Enter Between 3 and 5." << std::endl;
+		}
+		else
+		{
+			// Allocate memory
+			BoardSize = AnswerInt;
+			Board = new int*[BoardSize];
+			for (int i = 0; i < BoardSize; ++i)
+			{
+				Board[i] = new int[BoardSize];
+			}
+			CreateBoard();
+			break;
+		}
+	}
+
+
+	while (1)
+	{
+		std::cout << "\n Please Set the difficulty. (1 ~ 8)" << std::endl;
+		std::cin >> Answer;
+		int AnswerInt = (int)Answer - 48;
+		if (AnswerInt > 8 || AnswerInt < 1)
+		{
+			std::cout << " Please Enter Between 1 and 8." << std::endl;
+		}
+		else
+		{
+			Difficulty = AnswerInt;
+			break;
+		}
+	}
+
 	while (1)
 	{
 		std::cout << "\n Would you like go first? (Y/N)" << std::endl;
