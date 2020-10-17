@@ -80,7 +80,10 @@ void Game::UpdateBoard()
 
 void Game::CleanScreen()
 {
-	//system("cls");
+	if (bCleanScreen)
+	{
+		system("cls");
+	}
 }
 
 void Game::StartTurn(Turn TurnToStart)
@@ -293,7 +296,7 @@ bool Game::HasWon(Turn TurnToCheck)
 	// Diagonal 1
 	Sum = 0;
 	for (int i = 0; i < BoardSize; i++)
-	{		
+	{
 		Sum += Board[i][i];
 	}
 	if (Sum == TurnToCheck * BoardSize)
@@ -383,7 +386,7 @@ void Game::StartGame()
 		{
 			// Allocate memory
 			BoardSize = AnswerInt;
-			Board = new int*[BoardSize];
+			Board = new int* [BoardSize];
 			for (int i = 0; i < BoardSize; ++i)
 			{
 				Board[i] = new int[BoardSize];
@@ -392,7 +395,6 @@ void Game::StartGame()
 			break;
 		}
 	}
-
 
 	while (1)
 	{
@@ -407,6 +409,26 @@ void Game::StartGame()
 		{
 			Difficulty = AnswerInt;
 			break;
+		}
+	}
+
+	while (1)
+	{
+		std::cout << "\n Would you like clear screen every turn? (Y/N)" << std::endl;
+		std::cin >> Answer;
+		if (Answer == 'Y' || Answer == 'y')
+		{
+			bCleanScreen = true;
+			break;
+		}
+		else if (Answer == 'N' || Answer == 'n')
+		{
+			bCleanScreen = false;
+			break;
+		}
+		else
+		{
+			std::cout << " Please Enter Y or N." << std::endl;
 		}
 	}
 

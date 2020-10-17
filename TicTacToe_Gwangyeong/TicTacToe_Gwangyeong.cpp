@@ -8,11 +8,13 @@ int main()
 {
     std::cout << "Hello World!\n";
     
-	Game* game = Game::GetInstance();
+	//Game* game = Game::GetInstance();
+	Game* game = new Game();
 
 	game->StartGame();
+	game->ReleaseGame();
 
-	Game::Release();
+	delete game;
 	game = nullptr;
 }
 

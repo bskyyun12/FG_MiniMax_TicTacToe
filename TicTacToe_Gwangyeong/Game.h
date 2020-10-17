@@ -19,6 +19,8 @@ private:
 	int EmptySlotCount = BoardSize * BoardSize;
 	int Difficulty = 7;
 
+	bool bCleanScreen = false;
+
 	enum Turn
 	{
 		Empty = 0,
